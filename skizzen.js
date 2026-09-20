@@ -101,6 +101,22 @@ const F_OBEN_WAAGERECHT = (stark = true) => `<path d="M62 44H28" stroke-width="$
 const F_UNTEN_GERADE = (stark = true) => `<path d="M102 69L84 99" stroke-width="${stark ? 5 : 2}"${stark ? '' : ' opacity=".45"'}/>`;
 const F_UNTEN_SENKRECHT = (stark = true) => `<path d="M102 69V100" stroke-width="${stark ? 5 : 2}"${stark ? '' : ' opacity=".45"'}/>`;
 
+const fensterSchnitt = (versatz, beschriftung, titel) => {
+    const aussen = 28;
+    const flaeche = aussen + versatz;
+    return svg(wand(4, 18, 18, 82)
+        // Blendrahmen: Körper und die Nase, die den Flügel außen überdeckt
+        + `<path d="M22 ${aussen}h68v14H76v58H22z" fill="currentColor" fill-opacity=".32" stroke-width="2.2"/>`
+        // Flügel: Außenfläche um den Versatz weiter innen, innen bündig mit dem Rahmen
+        + `<path d="M90 ${flaeche}h58v${100 - flaeche}H90z" fill="currentColor" fill-opacity=".07" stroke-width="2.2"/>`
+        // Glas im Flügel
+        + `<path d="M118 ${flaeche + 14}h30M118 ${flaeche + 22}h30" stroke-width="1.6"/>`
+        + `<path d="M22 ${aussen}h130" stroke-width="1.4" stroke-dasharray="4 4"/>`
+        + (versatz ? mass(152, aussen, 152, flaeche, beschriftung) : '')
+        + text(28, 62, 'Rahmen', 11) + text(100, Math.min(flaeche + 40, 94), 'Flügel', 11)
+        + seiten(), titel);
+};
+
 const H2Skizzen = {
     // ---------- Elemente (Ansicht von außen) ----------
     fenster: svg(`${rahmen(20, 10, 120, 90)}${fluegel(30, 20, 100, 70)}`
@@ -134,27 +150,19 @@ const H2Skizzen = {
         + unterschrift('rechteckig'), 'Rechteckiges Fenster'),
 
     // ---------- Flügellage (waagerechter Schnitt, oben = außen) ----------
-    // Wichtig: Der Flügel ist in allen drei Bildern derselbe Block. Der Versatz schiebt ihn
-    // nach innen, er macht ihn nicht dünner – innen steht er dann entsprechend vor.
-    // Links die Wand, daneben der Blendrahmen, rechts der Flügel zur Fenstermitte hin.
-    fluegellage: svg(`${rahmen(12, 34, 26, 34)}${fluegel(38, 34, 34, 34)}<path d="M8 34h68" stroke-width="1.2" stroke-dasharray="4 4"/>`
-        + `${rahmen(90, 30, 26, 34)}${fluegel(116, 48, 36, 34)}<path d="M86 30h70" stroke-width="1.2" stroke-dasharray="4 4"/>`
-        + text(12, 96, 'bündig', 11) + text(94, 96, 'versetzt', 11) + text(5, 13, 'außen', 11),
+    // Nachgezeichnet nach der Definitionsskizze des Hauptkatalogs, gedruckte Seite 48
+    // („Blendrahmenüberschlag“ / „Flächenversatz am Fensterflügel“, Variante SP1/43):
+    //   · Der Blendrahmen hat außen eine breite Fläche und eine Nase, die über den Flügel greift.
+    //   · Der Flügel liegt mit seiner Außenfläche um den Flächenversatz dahinter.
+    //   · Innen enden beide auf einer Höhe – der Flügel steht nicht in den Raum.
+    // Genau in die Stufe außen kommt später der Insektenschutz; darum wird danach gefragt.
+    fluegellage: svg(`${rahmen(12, 30, 26, 34)}${fluegel(38, 30, 34, 34)}<path d="M8 30h68" stroke-width="1.2" stroke-dasharray="4 4"/>`
+        + `${rahmen(90, 30, 26, 34)}${fluegel(116, 44, 36, 20)}<path d="M86 30h70" stroke-width="1.2" stroke-dasharray="4 4"/>`
+        + text(12, 92, 'bündig', 11) + text(94, 92, 'versetzt', 11) + text(5, 13, 'außen', 11),
     'Flügellage im Schnitt: bündig und zurückversetzt'),
-    buendig: svg(`${wand(4, 20, 16, 56)}${rahmen(20, 28, 50, 44)}${fluegel(70, 28, 74, 44)}`
-        + '<path d="M20 28h130" stroke-width="1.4" stroke-dasharray="4 4"/>'
-        + text(24, 54, 'Rahmen', 11) + text(88, 54, 'Flügel', 11)
-        + seiten(), 'flächenbündig: Flügel und Blendrahmen liegen außen in einer Ebene'),
-    versetzt: svg(`${wand(4, 20, 16, 56)}${rahmen(20, 28, 50, 44)}${fluegel(70, 52, 74, 44)}`
-        + '<path d="M20 28h130" stroke-width="1.4" stroke-dasharray="4 4"/>'
-        + mass(150, 28, 150, 52, 'Versatz')
-        + text(24, 54, 'Rahmen', 11) + text(88, 78, 'Flügel', 11)
-        + seiten(), 'flächenversetzt: derselbe Flügel sitzt weiter innen, außen bleibt eine Stufe'),
-    halbversetzt: svg(`${wand(4, 20, 16, 56)}${rahmen(20, 28, 50, 44)}${fluegel(70, 40, 74, 44)}`
-        + '<path d="M20 28h130" stroke-width="1.4" stroke-dasharray="4 4"/>'
-        + mass(150, 28, 150, 40, 'halb')
-        + text(24, 54, 'Rahmen', 11) + text(88, 66, 'Flügel', 11)
-        + seiten(), 'halbflächenversetzt: derselbe Flügel sitzt nur wenig weiter innen'),
+    buendig: fensterSchnitt(0, null, 'flächenbündig: die Außenflächen von Flügel und Blendrahmen liegen in einer Ebene'),
+    halbversetzt: fensterSchnitt(14, 'halb', 'halbflächenversetzt: die Außenfläche des Flügels liegt wenig hinter der des Blendrahmens'),
+    versetzt: fensterSchnitt(28, 'Versatz', 'flächenversetzt: die Außenfläche des Flügels liegt deutlich hinter der des Blendrahmens'),
 
     // ---------- Überschlag (Profilkante des Blendrahmens) ----------
     ueberschlag: svg('<path d="M14 96V30h26v66z" fill="currentColor" fill-opacity=".32" stroke-width="2.2"/>'
