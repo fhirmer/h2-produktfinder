@@ -12,7 +12,7 @@ globalThis.H2Finder = {finder};
 if (typeof document === 'undefined') return;
 
 const SPEICHER = 'h2-produktfinder-3';
-const VERSION = '3.7';
+const VERSION = '3.7.1';
 const ART = {
     A1: 'Praxis-Ausschluss (Rudi)',
     A2: 'laut Katalog nicht geeignet',
