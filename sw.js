@@ -1,5 +1,5 @@
 // Offline-Fähigkeit für die Baustelle: alle Dateien des Finders werden beim ersten Aufruf zwischengespeichert.
-const CACHE = 'h2-produktfinder-3.6';
+const CACHE = 'h2-produktfinder-3.7';
 const DATEIEN = [
     './', 'index.html', 'style.css', 'daten/finder-daten.js', 'fragen.js', 'engine.js', 'skizzen.js', 'eigenschaften.js', 'finder.js',
     'favicon.svg', 'h2-logo-weiss.svg', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png',

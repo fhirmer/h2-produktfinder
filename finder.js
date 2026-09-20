@@ -12,7 +12,7 @@ globalThis.H2Finder = {finder};
 if (typeof document === 'undefined') return;
 
 const SPEICHER = 'h2-produktfinder-3';
-const VERSION = '3.6';
+const VERSION = '3.7';
 const ART = {
     A1: 'Praxis-Ausschluss (Rudi)',
     A2: 'laut Katalog nicht geeignet',
@@ -184,9 +184,13 @@ function frageHtml(eintrag, erste) {
     const frageText = jeText(frage, 'frage', antw);
     const hilfeText = jeText(frage, 'hilfe', antw);
     const blick = blickZeile(frage, antw);
-    const sortierhinweis = eintrag.nurSortierung
-        ? '<p class="unterzeile">Ändert nur die Reihenfolge – es fällt keine Lösung weg.</p>'
-        : '';
+    // Der ganze Verlauf steht sichtbar da. Damit niemand rätselt, warum eine Antwort nichts
+    // bewirkt, sagt die Frage es selbst – ohne sie deshalb zu verstecken.
+    const sortierhinweis = eintrag.ohneWirkung && !eintrag.beantwortet
+        ? '<p class="unterzeile">Ändert an den vorderen Lösungen nichts – kann offen bleiben.</p>'
+        : eintrag.nurSortierung
+            ? '<p class="unterzeile">Ändert nur die Reihenfolge – es fällt keine Lösung weg.</p>'
+            : '';
     const kopf = '';
     const hilfe = hilfeText || frage.skizze
         ? `<details class="hilfe"><summary>Wie erkenne ich das?</summary><div class="hilfe-inhalt">${skizze(frage.skizze, 'skizze gross')}${hilfeText ? `<p>${esc(hilfeText)}</p>` : ''}</div></details>`
@@ -223,9 +227,17 @@ function frageHtml(eintrag, erste) {
         const karten = eintrag.antworten.map((a) => `<label class="karte ${gewaehlt.has(a.id) ? 'aktiv' : ''}">
               <input type="checkbox" name="wunsch" value="${a.id}" ${gewaehlt.has(a.id) ? 'checked' : ''}>
               <span class="karte-text"><strong>${esc(a.text)}</strong></span></label>`).join('');
+        // Ohne diese Karte gibt es keinen Weg, „nichts davon“ zu sagen: Ein leeres Kästchenfeld
+        // bleibt unbeantwortet, und die Frage stünde bis zum Schluss offen.
+        const ohneAuswahl = frage.ohneAuswahl
+            ? `<button type="button" class="karte karte-unbekannt ${Array.isArray(alt) && !alt.length ? 'aktiv' : ''}" data-aktion="ohne-auswahl" data-frage="${frage.id}">
+                 <span class="skizze frage-zeichen" aria-hidden="true">–</span>
+                 <span class="karte-text"><strong>${esc(frage.ohneAuswahl)}</strong><small>weiter ohne Auswahl</small></span>
+               </button>`
+            : '';
         return `${kopf}<form class="frage ${eintrag.beantwortet ? 'beantwortet' : ''}" id="frage-${frage.id}" data-frage="${frage.id}" data-typ="mehrfach">
           <fieldset>${legende}${blick}<p class="unterzeile">Mehrfachauswahl möglich. Das ändert nur die Hinweise zum Gewebe.</p>${hilfe}
-            <div class="karten">${karten}</div>
+            <div class="karten">${karten}${ohneAuswahl}</div>
           </fieldset></form>`;
     }
 
@@ -245,7 +257,7 @@ function frageHtml(eintrag, erste) {
     const unbekannt = frage.weissNicht === false ? '' : `<label class="karte karte-unbekannt ${alt === UNBEKANNT ? 'aktiv' : ''}">
           <input type="radio" name="antwort" value="${UNBEKANNT}" ${alt === UNBEKANNT ? 'checked' : ''}>
           <span class="skizze frage-zeichen" aria-hidden="true">?</span>
-          <span class="karte-text"><strong>Weiß ich nicht</strong><small>kommt auf die Prüfliste fürs Aufmaß</small></span>
+          <span class="karte-text"><strong>Weiß ich nicht oder egal</strong><small>weiter ohne Auswahl – kommt auf die Prüfliste</small></span>
         </label>`;
     return `${kopf}<form class="frage ${eintrag.beantwortet ? 'beantwortet' : ''}" id="frage-${frage.id}" data-frage="${frage.id}" data-typ="eins">
       <fieldset>${legende}${blick}${sortierhinweis}${hilfe}
@@ -277,14 +289,14 @@ function schnellwahlHtml() {
 }
 
 function verlaufHtml() {
+    // Alle Abschnitte stehen von Anfang an da, damit man schnell zu einer anderen Frage
+    // springen und eine Antwort ändern kann (Wunsch H2, 20.09.2026).
     const abschnitte = finder.abschnitte(state.antworten);
-    const sichtbare = abschnitte.filter((x) => x.bereit);
-    const gezeigt = sichtbare.reduce((n, x) => n + x.eintraege.length, 0);
-    const beantwortet = sichtbare.reduce((n, x) => n + x.eintraege.filter((e) => e.beantwortet).length, 0);
-    const offenGesamt = abschnitte.reduce((n, x) => n + x.offen, 0);
-    const prozent = gezeigt ? Math.round((beantwortet / (beantwortet + Math.max(offenGesamt, 0) || 1)) * 100) : 0;
+    const gezeigt = abschnitte.reduce((n, x) => n + x.eintraege.length, 0);
+    const beantwortet = abschnitte.reduce((n, x) => n + x.eintraege.filter((e) => e.beantwortet).length, 0);
+    const prozent = gezeigt ? Math.round((beantwortet / gezeigt) * 100) : 0;
     let erste = true;
-    const stuecke = sichtbare.map((abschnitt) => {
+    const stuecke = abschnitte.map((abschnitt) => {
         const fragen = abschnitt.eintraege.map((eintrag) => {
             const html = frageHtml(eintrag, erste && !eintrag.beantwortet);
             if (erste && !eintrag.beantwortet) erste = false;
@@ -304,12 +316,8 @@ function verlaufHtml() {
                 nurMasse ? 'Ohne genaue Maße weiter' : 'Rest überspringen'} – kommt auf die Prüfliste</button>` : ''}
           </section>`;
     }).join('');
-    const naechster = abschnitte.find((x) => !x.bereit);
-    const ausblick = naechster
-        ? `<p class="ausblick">Danach kommt: ${esc(naechster.titel)}</p>`
-        : '';
     return `<div class="balken" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${prozent}" aria-label="Fortschritt"><span style="width:${prozent}%"></span></div>
-      ${schnellwahlHtml()}${stuecke}${ausblick}`;
+      ${schnellwahlHtml()}${stuecke}`;
 }
 
 function antwortText(id) {
@@ -564,6 +572,7 @@ document.addEventListener('click', (event) => {
         else if (aktion === 'bearbeiten') zeigeStelle(`frage-${ziel.dataset.frage}`);
         else if (aktion === 'ueberspringen') ueberspringe(ziel.dataset.abschnitt);
         else if (aktion === 'masse-ueberspringen') ueberspringeMasse();
+        else if (aktion === 'ohne-auswahl') beantworte(ziel.dataset.frage, []);
         else if (aktion === 'schnell') ueberspringeAlles();
         else if (aktion === 'antwort') beantworte(ziel.dataset.frage, ziel.dataset.wert);
         else if (aktion === 'teilen') teilen(ziel);

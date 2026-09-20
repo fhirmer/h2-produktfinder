@@ -24,6 +24,10 @@ const fensterOderTuer = (a) => a.element === 'fenster' || a.element === 'tuer';
 const fassade = (a) => a.element === 'tuer' || alsFenster(a);
 const mitRollladen = (a) => fassade(a) && a.rollladen === 'ja';
 const system = (a, ...s) => !a.system || a.system === 'egal' || a.system === 'unbekannt' || s.includes(a.system);
+// Erst die grobe Platzfrage, dann die Seiten im Einzelnen (Wunsch H2, 20.09.2026).
+// Solange „Ist rundherum genug Platz?“ offen ist, kommen die Detailfragen nicht – bei
+// „teilweise eng“ und bei „weiß ich nicht“ schon, denn dann führen sie zur Antwort.
+const engNachfragen = (a) => a.platz === 'eng' || a.platz === 'unbekannt';
 
 // Das gewählte Element in der Form, wie es in einem Satz steht („… auf die geschlossene Tür schauen“)
 const elementWort = (a) => (a.element === 'tuer' ? 'die geschlossene Tür'
@@ -184,21 +188,22 @@ const fragen = [
         // Erst die eine große Frage, dann erst die Seiten einzeln (Rückmeldung H2 vom 18.09.2026).
         // „Genug Platz“ setzt die Eng-Labels auf falsch: Das sortiert Eng-Varianten nach hinten,
         // schließt aber nichts aus.
-        id: 'platz', abschnitt: 2, block: 'C', blick: 'aussen', grob: true,
+        // Wird immer gestellt (Wunsch H2, 20.09.2026): erst grob, dann erst die Seiten im Einzelnen.
+        id: 'platz', abschnitt: 2, block: 'C', blick: 'aussen', grob: true, immerZeigen: true,
         zeigen: fassade,
         frage: 'Ist rundherum genug Platz für den Insektenschutz?',
         hilfe: 'Gemeint ist die freie Fläche auf dem Blendrahmen: seitlich, oben und – wenn vorhanden – zum Rollladen hin. Faustregel: Passt überall mindestens ein Finger breit (etwa 15 mm) auf den Rahmen?',
         skizze: 'platz',
         labels: ['platz.panzer_eng', 'platz.fuehrung_eng_links', 'platz.fuehrung_eng_rechts', 'platz.fuehrung_eng'],
         antworten: [
-            {id: 'genug', text: 'Ja, überall genug Platz', hinweis: 'ringsum mindestens fingerbreit frei',
+            {id: 'genug', text: 'Überall genug Platz', hinweis: 'ringsum mindestens fingerbreit frei',
                 setzt: {'platz.panzer_eng': false, 'platz.fuehrung_eng_links': false, 'platz.fuehrung_eng_rechts': false, 'platz.fuehrung_eng': false}},
-            {id: 'eng', text: 'Nein, irgendwo ist es eng', hinweis: 'ich frage dann genauer nach'},
+            {id: 'eng', text: 'Teilweise eng', hinweis: 'dann frage ich die Seiten einzeln ab'},
         ],
     },
     {
         id: 'panzer', abschnitt: 2, block: 'C', blick: 'aussen',
-        zeigen: (a) => mitRollladen(a) && a.platz !== 'genug',
+        zeigen: (a) => mitRollladen(a) && engNachfragen(a),
         frage: 'Liegt der heruntergelassene Rollladen eng am Flügel?',
         hilfe: 'Rollladen ganz herunterlassen und von außen seitlich schauen, wie viel Platz zwischen Panzer und Flügel bleibt.',
         skizze: 'panzer',
@@ -213,7 +218,7 @@ const fragen = [
         // ausdrücklich „von innen betrachtet“ (gedruckte Seite 17, Zusatzkasten unter dem
         // Horizontalschnitt). Von außen gefragt wären links und rechts vertauscht.
         id: 'fuehrung', abschnitt: 2, block: 'C', blick: 'innen',
-        zeigen: (a) => mitRollladen(a) && a.platz !== 'genug',
+        zeigen: (a) => mitRollladen(a) && engNachfragen(a),
         modus: 'alle',
         exakt: ['platz.fuehrung_eng_links', 'platz.fuehrung_eng_rechts'],
         frage: 'Sitzen die Führungsschienen eng am Blendrahmen?',
@@ -591,7 +596,7 @@ const fragen = [
             {skizze: 'spalt-mittel', id: 'normal', text: 'Fingerbreit', hinweis: 'ungefähr 15 bis 25 mm', ab: 15, bis: 25},
             {skizze: 'spalt-weit', id: 'viel', text: 'Viel Platz', hinweis: 'breiter als ein Daumen, über ca. 25 mm', ab: 25},
         ], blick: 'aussen',
-        zeigen: (a) => fassade(a) && a.platz !== 'genug',
+        zeigen: (a) => fassade(a) && engNachfragen(a),
         frage: 'Wie breit ist die freie Auflagefläche seitlich am Blendrahmen?',
         hilfe: 'Von außen messen: von der Außenkante des Blendrahmens bis zum Flügel bzw. bis zur Rollladenführung. Die schmalere der beiden Seiten zählt.',
         skizze: 'mass-seitlich',
@@ -604,7 +609,7 @@ const fragen = [
             {skizze: 'spalt-mittel', id: 'normal', text: 'Etwas Luft', hinweis: 'ungefähr 15 bis 25 mm', ab: 15, bis: 25},
             {skizze: 'spalt-weit', id: 'viel', text: 'Deutlich Abstand', hinweis: 'über ca. 25 mm', ab: 25},
         ], blick: 'aussen',
-        zeigen: (a) => mitRollladen(a) && a.platz !== 'genug',
+        zeigen: (a) => mitRollladen(a) && engNachfragen(a),
         frage: 'Wie weit ist die Führungsschiene vom Blendrahmen entfernt?',
         hilfe: 'Von außen seitlich messen: von der Rollladen-Führungsschiene bis zur Außenkante des Blendrahmens.',
         skizze: 'mass-fuehrung',
@@ -617,7 +622,7 @@ const fragen = [
             {skizze: 'spalt-mittel', id: 'normal', text: 'Ein Finger passt', hinweis: 'ungefähr 18 bis 30 mm', ab: 18, bis: 30},
             {skizze: 'spalt-weit', id: 'viel', text: 'Reichlich Platz', hinweis: 'über ca. 30 mm', ab: 30},
         ], blick: 'aussen',
-        zeigen: (a) => alsFenster(a) && a.platz !== 'genug',
+        zeigen: (a) => alsFenster(a) && engNachfragen(a),
         frage: 'Wie viel Blendrahmenfläche ist oben über dem Flügel frei?',
         hilfe: 'Von außen messen: von der Oberkante des Flügels bis zur Oberkante des Blendrahmens. Der Katalog nennt das die obere Blendrahmenüberstandsfläche.',
         skizze: 'mass-oben',
@@ -630,7 +635,7 @@ const fragen = [
             {skizze: 'spalt-mittel', id: 'normal', text: 'Eine Handbreit knapp', hinweis: 'ungefähr 25 bis 65 mm', ab: 25, bis: 65},
             {skizze: 'spalt-weit', id: 'viel', text: 'Viel Platz nach außen', hinweis: 'über ca. 65 mm', ab: 65},
         ], blick: 'aussen',
-        zeigen: (a) => fassade(a) && a.platz !== 'genug',
+        zeigen: (a) => fassade(a) && engNachfragen(a),
         frage: 'Wie viel Platz ist vor dem Blendrahmen bis zum Rollladen?',
         hilfe: 'Einbautiefe, von außen gemessen: von der Außenfläche des Blendrahmens nach außen bis zum ersten Hindernis davor, meist Rollladenpanzer oder Führungsschiene.',
         skizze: 'mass-tiefe',
@@ -695,7 +700,7 @@ const fragen = [
 
     // K – Wünsche (nur Hinweise zum Gewebe, nie Ausschluss)
     {
-        id: 'wunsch', abschnitt: 4, block: 'K', typ: 'mehrfach', immerZeigen: true,
+        id: 'wunsch', abschnitt: 4, block: 'K', typ: 'mehrfach', immerZeigen: true, ohneAuswahl: 'Keine besonderen Wünsche',
         zeigen: (a) => Boolean(a.element),
         frage: 'Gibt es besondere Wünsche?',
         antworten: [

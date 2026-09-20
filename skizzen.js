@@ -331,11 +331,11 @@ const H2Skizzen = {
     // ---------- Maßklassen: derselbe Spalt in drei Breiten ----------
     // Die Maßfragen haben alle dieselbe Staffelung (wenig – mittel – viel), deshalb dieselben drei Bilder.
     'spalt-eng': svg(`${rahmen(10, 22, 52, 62)}${fluegel(74, 22, 76, 62)}`
-        + mass(62, 52, 74, 52) + unterschrift('sehr wenig Platz'), 'sehr schmaler Spalt'),
+        + mass(62, 52, 74, 52) + unterschrift('kleiner Abstand'), 'sehr schmaler Spalt'),
     'spalt-mittel': svg(`${rahmen(10, 22, 52, 62)}${fluegel(92, 22, 58, 62)}`
         + mass(62, 52, 92, 52) + unterschrift('mittlerer Abstand'), 'mittlerer Spalt'),
     'spalt-weit': svg(`${rahmen(10, 22, 52, 62)}${fluegel(116, 22, 34, 62)}`
-        + mass(62, 52, 116, 52) + unterschrift('viel Platz'), 'weiter Spalt'),
+        + mass(62, 52, 116, 52) + unterschrift('großer Abstand'), 'weiter Spalt'),
 
     // ---------- Maße ----------
     'mass-seitlich': svg('<path d="M24 18v78" stroke-width="8"/>'

@@ -533,8 +533,10 @@ function erstelleFinder(daten, katalog) {
                 continue;
             }
             const pool = frage.id === 'system' ? alle : frage.typ === 'mass' ? alle.slice(0, VORNE_MASS) : vorne;
-            const w = wirkung(frage, a, pool);
-            if (w > 0) liste.push({frage, wirkung: w, antworten: antwortenFuer(frage, a, alle)});
+            // Offen ist, was zur Situation passt und noch keine Antwort hat – auch wenn es die
+            // Empfehlung nicht ändert. Der ganze Verlauf ist sichtbar, also muss auch der Zähler
+            // und das Überspringen genau diese Fragen meinen (Wunsch H2, 20.09.2026).
+            liste.push({frage, wirkung: wirkung(frage, a, pool), antworten: antwortenFuer(frage, a, alle)});
         }
         const blockNr = new Map(bloecke.map((b, i) => [b.id, i]));
         return liste.sort((x, y) => blockNr.get(x.frage.block) - blockNr.get(y.frage.block) || y.wirkung - x.wirkung);
@@ -584,7 +586,6 @@ function erstelleFinder(daten, katalog) {
         const jetzt = vorneCodes(passend);
         const vorne = alle.slice(0, VORNE);
         const liste = [];
-        let offenBisher = 0;
         for (const abschnitt of abschnittsliste || []) {
             const eintraege = [];
             for (const frage of fragen) {
@@ -595,22 +596,32 @@ function erstelleFinder(daten, katalog) {
                 const ohne = istBeantwortet ? {...a, [frage.id]: undefined} : a;
                 const poolOhne = istBeantwortet ? auswerten(ohne).passend.map((b) => b.variante) : alle;
                 const antworten = antwortenFuer(frage, ohne, poolOhne);
+                // Der ganze Verlauf steht sichtbar da, damit man schnell umschalten kann (Wunsch H2).
+                // Ausgeblendet wird nur, was zur Situation nicht passt – das regelt `zeigen`.
+                // Eine Frage, die an den vorderen Lösungen nichts ändert, wird gezeigt und benannt.
+                let ohneWirkung = false;
                 if (!istBeantwortet && !frage.pflicht) {
-                    // Die billige Vorprüfung fragt nur: Reagiert überhaupt eine Variante darauf?
-                    // Sie darf nicht auf die vordersten Lösungen schauen – sonst fiele genau die
-                    // Frage weg, die eine andere Variante nach vorn holt (z. B. „welche Seite ist eng?“).
+                    // Die billige Vorprüfung fragt zuerst: Reagiert überhaupt eine Variante darauf?
+                    // Sie darf nicht auf die vordersten Lösungen schauen – sonst hinge genau die
+                    // Frage hinten, die eine andere Variante nach vorn holt (z. B. „welche Seite ist eng?“).
                     const pool = frage.typ === 'mass' ? alle.slice(0, VORNE_MASS) : alle;
-                    if (wirkung(frage, a, pool) <= 0) continue;
-                    // Maße sind freiwillig und schließen erst mit gemessenem Wert aus: Prüfung entfällt hier
-                    if (frage.typ !== 'mass' && !frage.immerZeigen && frage.id !== 'system' && !aendertEmpfehlung(frage, a, jetzt, antworten)) continue;
+                    // Maße sind freiwillig und schließen erst mit gemessenem Wert aus: zweite Prüfung entfällt dort
+                    // Grobe Vorfragen (`grob`) und Fragen, die immer gestellt werden, bekommen den
+                    // Hinweis nie: Der Platz öffnet erst die Detailfragen, die Einbauweise bestimmt
+                    // das Bestellmaß. „Ändert nichts“ wäre dort falsch.
+                    ohneWirkung = !frage.grob && !frage.immerZeigen
+                        && (wirkung(frage, a, pool) <= 0
+                            || (frage.typ !== 'mass' && frage.id !== 'system'
+                                && !aendertEmpfehlung(frage, a, jetzt, antworten)));
                 }
                 if (!istBeantwortet && frage.typ !== 'mass' && !antworten.length) continue;
-                eintraege.push({frage, antworten, beantwortet: istBeantwortet, nurSortierung: nurSortierung(frage, a, alle)});
+                eintraege.push({frage, antworten, beantwortet: istBeantwortet, ohneWirkung, nurSortierung: nurSortierung(frage, a, alle)});
             }
             if (!eintraege.length) continue;
             const offen = eintraege.filter((e) => !e.beantwortet).length;
-            liste.push({...abschnitt, eintraege, offen, bereit: offenBisher === 0});
-            offenBisher += offen;
+            // `bereit` bleibt im Datensatz, ist aber immer wahr: Früher erschien ein Abschnitt erst,
+            // wenn der vorherige beantwortet war. Jetzt steht der ganze Verlauf da.
+            liste.push({...abschnitt, eintraege, offen, bereit: true});
         }
         return liste;
     }
